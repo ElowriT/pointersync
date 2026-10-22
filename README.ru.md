@@ -58,4 +58,7 @@ open ~/Library/Developer/PointerSync/PointerSync.app
 
 PointerSync бесплатный. Если помог — можно угостить меня кофе на [Ko-fi](https://ko-fi.com/elo7151).
 
-<p align="center">© 2026 ElowriT</p>
+## Лицензия
+
+PointerSync (всё в этом репозитории) — © 2026 ElowriT, распространяется по лицензии GNU General
+Public License версии 3: см. [LICENSE](LICENSE).

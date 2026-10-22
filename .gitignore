@@ -4,6 +4,7 @@
 !/.gitignore
 !/README.md
 !/README.ru.md
+!/LICENSE
 !/build.sh
 !/release.sh
 !/local.env.example

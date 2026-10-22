@@ -58,4 +58,7 @@ How it works inside, how it measures and how releases are made (in Russian): [do
 
 PointerSync is free. If it helped, you can buy me a coffee on [Ko-fi](https://ko-fi.com/elo7151).
 
-<p align="center">© 2026 ElowriT</p>
+## Licence
+
+PointerSync (everything in this repository) is © 2026 ElowriT and is licensed under the GNU General
+Public License, version 3: see [LICENSE](LICENSE).
