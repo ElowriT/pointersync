@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Курсор по кадрам</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;650&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column — pad to move the pointer in, live dots per frame, then numbers and saved runs. */
+:root {
+  --bg: #f3f4f1;
+  --panel: #ffffff;
+  --ink: #1c1f1d;
+  --muted: #5d6560;
+  --line: #d9ddd6;
+  --accent: #2f6fd6;
+  --good: #2c8a4b;
+  --warn: #c7771a;
+  --bad: #c43d3d;
+  --dot: #2f6fd6;
+  --sans: "Onest", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141716; --panel: #1c201e; --ink: #e8ebe7; --muted: #9aa39d; --line: #2e3431;
+    --accent: #6b9dee; --good: #57b878; --warn: #e3a04f; --bad: #e57171; --dot: #7aa8f2; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141716; --panel: #1c201e; --ink: #e8ebe7; --muted: #9aa39d; --line: #2e3431;
+  --accent: #6b9dee; --good: #57b878; --warn: #e3a04f; --bad: #e57171; --dot: #7aa8f2; color-scheme: dark;
+}
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px; }
+h1 { font-size: 26px; font-weight: 650; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: 16px; font-weight: 650; margin: 0 0 10px; }
+p { margin: 0; max-width: 65ch; }
+.lead { color: var(--muted); }
+.pad { position: relative; height: 340px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line);
+  touch-action: none; overflow: hidden; cursor: crosshair; }
+.pad canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pad .hint { position: absolute; left: 16px; top: 12px; font-size: 13px; color: var(--muted); pointer-events: none; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.controls input { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); min-width: 0; flex: 1 1 220px; }
+button { font: inherit; font-weight: 500; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.status { font-size: 13px; color: var(--muted); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 14px; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.metric .k { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+.metric .v { font: 600 22px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.metric .s { font-size: 12px; color: var(--muted); }
+.bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line); gap: 2px; }
+.bar span { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.note { font-size: 13px; color: var(--warn); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>Курсор по кадрам</h1>
+    <p class="lead">Открой эту страницу на iPad и на маке с той же мышью. Нажми «Начать замер» и води мышью кругами по полю 10 секунд, ровно и без остановок. Точки на поле показывают, где был указатель в каждом кадре: ровные промежутки значат плавный ход, слипшиеся и пропущенные точки значат рывки.</p>
+  </header>
+
+  <div class="pad" id="pad">
+    <canvas id="canvas"></canvas>
+    <div class="hint" id="hint">Води мышью здесь</div>
+  </div>
+
+  <div class="controls">
+    <input id="label" type="text" placeholder="Подпись, например «iPad, MX Master по Bluetooth»" autocomplete="off">
+    <button class="primary" id="start">Начать замер · 10 с</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <section class="card" id="result" hidden>
+    <h2 id="resultTitle">Результат</h2>
+    <div class="metrics" id="metrics"></div>
+    <div style="display:grid;gap:8px">
+      <div class="metric"><span class="k">Сколько новых положений указателя приходило за кадр</span></div>
+      <div class="bar" id="bar"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <p class="note" id="note" hidden></p>
+    <div class="controls">
+      <button id="save" disabled>Сохранить на Мак</button>
+      <button id="copy">Скопировать данные</button>
+      <span class="status" id="saveStatus"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Сохранённые замеры</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Подпись</th><th>Устройство</th><th>Кадры</th><th>Указатель</th><th>Без нового положения</th><th>Два и больше</th><th>Неровность</th><th>Когда</th></tr></thead>
+        <tbody id="runs"><tr><td colspan="8" class="empty">Пока пусто. Сохранённые замеры с iPad и мака появятся здесь рядом.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+const DURATION = 10000, PAUSE = 40, TRAIL = 70;
+const $ = (id) => document.getElementById(id);
+const pad = $("pad"), canvas = $("canvas"), ctx = canvas.getContext("2d");
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const isIPad = /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const deviceName = isIPad ? "iPad" : /iPhone/.test(navigator.userAgent) ? "iPhone" : /Macintosh/.test(navigator.userAgent) ? "Mac" : "Другое";
+const engine = /Chrome|Electron/.test(navigator.userAgent) ? "Chromium" : /AppleWebKit/.test(navigator.userAgent) ? "WebKit" : "другой";
+
+let rec = null, last = null, pending = 0, trail = [], result = null;
+
+// Every pointer event the page gets; in a frame the page sees how many came since the last one.
+pad.addEventListener("pointermove", (e) => {
+  last = { x: e.clientX, y: e.clientY };
+  pending++;
+  if (rec) {
+    rec.events.push([+e.timeStamp.toFixed(2), +e.clientX.toFixed(2), +e.clientY.toFixed(2)]);
+    rec.types.add(e.pointerType);
+    if (e.getCoalescedEvents) {
+      const list = e.getCoalescedEvents();
+      rec.coalescedSupported = true;
+      for (const c of list) rec.raw.push([+c.timeStamp.toFixed(2), +c.clientX.toFixed(2), +c.clientY.toFixed(2)]);
+    }
+  }
+});
+
+function resize() {
+  const r = pad.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resize);
+resize();
+
+function draw() {
+  const r = pad.getBoundingClientRect();
+  ctx.clearRect(0, 0, r.width, r.height);
+  ctx.strokeStyle = css("--line"); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(r.width / 2, r.height / 2, Math.min(r.width, r.height) * 0.33, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = css("--dot");
+  trail.forEach((p, i) => {
+    ctx.globalAlpha = 0.2 + 0.8 * (i / trail.length);
+    ctx.beginPath(); ctx.arc(p.x - r.left, p.y - r.top, 3, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function frame(ts) {
+  if (last) { trail.push({ ...last }); if (trail.length > TRAIL) trail.shift(); }
+  if (rec) {
+    rec.frames.push([+ts.toFixed(2), pending, last ? +last.x.toFixed(2) : null, last ? +last.y.toFixed(2) : null]);
+    const left = Math.max(0, Math.ceil((DURATION - (ts - rec.start)) / 1000));
+    $("status").textContent = `Идёт замер… ${left} с`;
+    if (ts - rec.start >= DURATION) finish();
+  }
+  pending = 0;
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+$("start").addEventListener("click", () => {
+  rec = { start: performance.now(), events: [], raw: [], frames: [], types: new Set(), coalescedSupported: false };
+  $("start").disabled = true; $("result").hidden = true; $("hint").textContent = "Води кругами, ровно и без остановок";
+});
+
+const median = (a) => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+const pctl = (a, p) => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.round((s.length - 1) * p))]; };
+const pct = (x) => isFinite(x) ? Math.round(x * 100) + "%" : "—";
+const hz = (ms) => isFinite(ms) && ms > 0 ? Math.round(1000 / ms) : NaN;
+
+function rate(times) {
+  const iv = [];
+  for (let i = 1; i < times.length; i++) { const d = times[i] - times[i - 1]; if (d > 0 && d <= PAUSE) iv.push(d); }
+  return { hz: hz(median(iv)), p10: pctl(iv, 0.1), p90: pctl(iv, 0.9) };
+}
+
+// The same measure as PointerSync: each frame's step against the average of ±4 frames around it.
+function analyze(r) {
+  const ev = r.events.map((e) => e[0]);
+  const F = r.frames;
+  const frameRate = rate(F.map((f) => f[0]));
+  const moving = F.map((f) => {
+    let before = -1, after = -1;
+    for (const t of ev) { if (t <= f[0]) before = t; else { after = t; break; } }
+    return before >= 0 && after >= 0 && f[0] - before <= PAUSE && after - f[0] <= PAUSE && f[2] !== null;
+  });
+  const step = F.map((f, i) => i && moving[i] && moving[i - 1] ? Math.hypot(f[2] - F[i - 1][2], f[3] - F[i - 1][3]) : null);
+  const errs = [], counts = [0, 0, 0];
+  let stalls = 0;
+  for (let i = 4; i < F.length - 4; i++) {
+    const w = step.slice(i - 4, i + 5);
+    if (w.some((s) => s === null)) continue;
+    const m = w.reduce((a, b) => a + b, 0) / 9;
+    if (m < 0.5) continue;
+    errs.push(Math.abs(step[i] - m) / m);
+    counts[Math.min(F[i][1], 2)]++;
+    if (step[i] < 0.05 * m) stalls++;
+  }
+  const n = errs.length || 1;
+  const fractional = r.events.some((e) => e[1] % 1 !== 0 || e[2] % 1 !== 0);
+  return {
+    label: $("label").value.trim(),
+    device: deviceName, engine,
+    pointerTypes: [...r.types].join(", "),
+    frameHz: frameRate.hz,
+    eventHz: rate(ev).hz,
+    rawHz: r.coalescedSupported ? rate(r.raw.map((e) => e[0])).hz : null,
+    framesMoving: errs.length,
+    hist: counts.map((c) => c / n),
+    uneven: median(errs), uneven95: pctl(errs, 0.95), stalls: stalls / n,
+    fractional,
+    createdAt: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    frames: r.frames,
+    raw: r.coalescedSupported ? r.raw : [],
+  };
+}
+
+function finish() {
+  const r = rec; rec = null;
+  $("start").disabled = false; $("hint").textContent = "Води мышью здесь";
+  result = analyze(r);
+  $("status").textContent = result.framesMoving < 120 ? "Мало ровного движения, повтори замер" : "Готово";
+  show(result);
+}
+
+function show(x) {
+  $("result").hidden = false;
+  $("resultTitle").textContent = `Результат: ${x.device} · ${x.engine}${x.label ? " · " + x.label : ""}`;
+  const items = [
+    ["Частота кадров страницы", isFinite(x.frameHz) ? x.frameHz + " Гц" : "—", "requestAnimationFrame"],
+    ["События указателя", isFinite(x.eventHz) ? x.eventHz + " Гц" : "—", x.rawHz ? `сырых: ${x.rawHz} Гц` : "сырые события браузер не отдаёт"],
+    ["Неровность шага", pct(x.uneven), `в худших 5% кадров: ${pct(x.uneven95)}`],
+    ["Кадров без нового положения", pct(x.hist[0]), `из ${x.framesMoving} кадров ровного движения`],
+  ];
+  $("metrics").innerHTML = "";
+  for (const [k, v, s] of items) {
+    const d = document.createElement("div"); d.className = "metric";
+    d.innerHTML = `<div class="k"></div><div class="v"></div><div class="s"></div>`;
+    d.children[0].textContent = k; d.children[1].textContent = v; d.children[2].textContent = s;
+    $("metrics").appendChild(d);
+  }
+  const colors = [css("--bad"), css("--good"), css("--warn")], names = ["0", "1", "2 и больше"];
+  $("bar").innerHTML = ""; $("legend").innerHTML = "";
+  x.hist.forEach((h, i) => {
+    const s = document.createElement("span"); s.style.width = (h * 100) + "%"; s.style.background = colors[i]; $("bar").appendChild(s);
+    const l = document.createElement("span"); l.innerHTML = `<i></i>`; l.firstChild.style.background = colors[i];
+    l.append(`${names[i]}: ${pct(h)}`); $("legend").appendChild(l);
+  });
+  const notes = [];
+  if (isFinite(x.frameHz) && x.frameHz < 75 && x.device === "iPad")
+    notes.push("Страница рисуется на 60 Гц, хотя экран может 120. В Safari это включённый по умолчанию флаг: Настройки → Приложения → Safari → Дополнения → Feature Flags → «Prefer Page Rendering Updates near 60fps». Выключи его на время замера.");
+  if (x.pointerTypes && !/mouse/.test(x.pointerTypes)) notes.push(`Указатель определился как «${x.pointerTypes}», а не мышь.`);
+  $("note").hidden = !notes.length; $("note").textContent = notes.join(" ");
+  $("save").disabled = !db;
+  $("saveStatus").textContent = db ? "" : "Страница открыта как файл: сохранить на Мак нельзя, скопируй данные и пришли их Claude.";
+}
+
+$("copy").addEventListener("click", async () => {
+  if (!result) return;
+  try { await navigator.clipboard.writeText(JSON.stringify(result)); $("saveStatus").textContent = "Скопировано"; }
+  catch { $("saveStatus").textContent = "Не удалось скопировать"; }
+});
+
+// Served by tools/probe_server.py on the Mac: results are saved there, next to PointerSync's recordings.
+const server = location.protocol.startsWith("http");
+$("save").addEventListener("click", async () => {
+  if (!server || !result) return;
+  $("save").disabled = true; $("saveStatus").textContent = "Сохраняю…";
+  try {
+    const r = await fetch("/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(result) });
+    if (!r.ok) throw new Error(r.status);
+    $("saveStatus").textContent = "Сохранено на Маке.";
+    loadRuns();
+  } catch { $("save").disabled = false; $("saveStatus").textContent = "Не сохранилось: проверь, что сервер на Маке запущен, и попробуй ещё раз."; }
+});
+
+async function loadRuns() {
+  if (!server) return;
+  try {
+    const runs = await (await fetch("/runs")).json();
+    renderRuns({ empty: !runs.length, docs: runs.map((x) => ({ data: () => x })) });
+  } catch {}
+}
+loadRuns();
+const db = server;   // show() enables saving when the page came from the server
+</script>
+
+</body>
+</html>

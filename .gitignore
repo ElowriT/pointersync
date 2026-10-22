@@ -1,0 +1,16 @@
+# Only what PointerSync is made of goes into git. Builds, releases, this Mac's signing
+# settings and git's own folder stay out (iCloud skips anything named *.nosync).
+/*
+!/.gitignore
+!/README.md
+!/README.ru.md
+!/build.sh
+!/release.sh
+!/local.env.example
+!/App/
+!/Shared/
+!/Assets/
+!/Lab/
+!/tools/
+!/docs/
+.DS_Store

@@ -1,0 +1,47 @@
+{
+  "fill": {
+    "solid": "extended-srgb:0.02000,0.02000,0.02000,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "cursor.svg",
+          "name": "cursor"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.35
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": false,
+          "image-name": "dot.svg",
+          "name": "dot"
+        },
+        {
+          "glass": false,
+          "image-name": "ticks.svg",
+          "name": "ticks"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.3
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}
