@@ -55,7 +55,19 @@ struct Header: View {
     var body: some View {
         ZStack {
             HStack(spacing: 7) {
-                Circle().fill(Theme.signal).frame(width: 6, height: 6)
+                // The one color's dot, a heart while a drawn heart is answered.
+                ZStack {
+                    if model.reaction?.doodle == .heart {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Theme.signal)
+                            .transition(.scale(scale: 0.3).combined(with: .opacity))
+                    } else {
+                        Circle().fill(Theme.signal).frame(width: 6, height: 6)
+                            .transition(.scale(scale: 0.3).combined(with: .opacity))
+                    }
+                }
+                .frame(width: 10, height: 10)
                 Text("POINTERSYNC")
                     .font(Theme.mono(11))
                     .tracking(2.4)
@@ -433,10 +445,10 @@ struct WelcomeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer(minLength: 0)
-            Dial(mode: .idle)
+            Dial(mode: .idle, reaction: model.reaction)
                 .frame(maxWidth: .infinity)
             Spacer(minLength: 28)
-            Title(text: tr("Мышь и экран\nв одном ритме.", "Mouse and display,\nin step."))
+            Title(text: answer ?? tr("Мышь и экран\nв одном ритме.", "Mouse and display,\nin step."))
             BodyText(text: tr("Проверю каждую частоту экрана с твоей мышью и покажу, где курсор идёт ровнее всего. Полминуты — и можно забыть.",
                               "Tries every refresh rate of your display with your mouse and shows where the cursor moves most evenly. Half a minute, then forget about it."))
                 .padding(.top, 12)
@@ -449,6 +461,16 @@ struct WelcomeView: View {
             }
             Spacer(minLength: 28)
             InkButton(title: tr("Начать", "Start")) { model.startMeasuring() }
+        }
+    }
+
+    /// What the title says back to a drawing.
+    private var answer: String? {
+        switch model.reaction?.doodle {
+        case .heart: return tr("Взаимно.\n♥", "Right back\nat you. ♥")
+        case .star: return tr("Звезда!\nА теперь круги.", "A star!\nNow circles.")
+        case .rude: return tr("Кхм.\nМы тут круги меряем.", "Ahem.\nWe measure circles here.")
+        default: return nil
         }
     }
 }

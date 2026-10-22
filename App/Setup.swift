@@ -9,6 +9,11 @@ final class SetupModel: ObservableObject {
     enum Hint { case start, moving, slow, switching }
     /// Why the little window with how to move the mouse is up: the hand rests, or crawls.
     enum Coach: Equatable { case still, slow }
+    /// A shape drawn with the cursor on the start screen, and when: an easter egg.
+    struct Reaction: Equatable {
+        var doodle: Doodle
+        var at: Double
+    }
     enum Panel: Equatable { case settings, about, quit }
 
     @Published var stage = Stage.welcome
@@ -27,6 +32,8 @@ final class SetupModel: ObservableObject {
     /// The two rates being tried a second time, while that goes on.
     @Published var recheck: [Double] = []
     @Published var coach: Coach?
+    @Published var reaction: Reaction?
+    static let reactionSeconds = 3.5
     @Published var trials: [RateTrial] = []
     /// The run before this one on the same mouse and screen, rate by rate, to see if it repeats.
     @Published var previous: [Double: Double] = [:]
@@ -54,11 +61,34 @@ final class SetupModel: ObservableObject {
     private var previousKey = ""
     private var stillSince: Double?
     private var slowSince: Double?
+    private let doodles = DoodleWatcher()
+    private var lastReaction = -100.0
     private var nextHint: Hint?
     private var nextHintSince = 0.0
     private var runKey: String { "\(deviceName)|\(screenName)" }
 
     init() {
+        // `--doodle-log`: every drawing on the start screen, weighed, one JSON line each, into
+        // ~/Library/Application Support/PointerSync/doodles.jsonl, to tune the easter egg.
+        if CommandLine.arguments.contains("--doodle-log") {
+            let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("PointerSync", isDirectory: true)
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let file = folder.appendingPathComponent("doodles.jsonl")
+            doodles.log = { entry in
+                var line = entry
+                line["at"] = ISO8601DateFormatter().string(from: Date())
+                guard var data = try? JSONSerialization.data(withJSONObject: line, options: [.sortedKeys]) else { return }
+                data.append(0x0A)
+                if let handle = try? FileHandle(forWritingTo: file) {
+                    handle.seekToEndOfFile()
+                    handle.write(data)
+                    try? handle.close()
+                } else {
+                    try? data.write(to: file)
+                }
+            }
+        }
         // A changed priority re-picks the rate from the same measurements.
         settingsWatch = Settings.shared.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async { if self?.stage == .result { self?.recommend() } }
@@ -135,6 +165,8 @@ final class SetupModel: ObservableObject {
         live = []
         recheck = []
         coach = nil
+        reaction = nil
+        doodles.reset()
         stillSince = nil
         slowSince = nil
         tester.begin(on: screen)
@@ -145,6 +177,19 @@ final class SetupModel: ObservableObject {
 
     /// Called every frame of the window's screen.
     func frame() {
+        // On the start screen, see whether the cursor draws something, while the app is in
+        // front: from behind other windows, nobody draws in its dial.
+        if stage == .welcome, panel == nil, !previewing, let p = CursorTrail.shared.points.last {
+            if NSApp.isActive {
+                let now = CACurrentMediaTime()
+                // The drawing as the dial's trail shows it: the hand's path, scaled down. The
+                // canvas under it only slides it about.
+                let shown = CGPoint(x: p.x * CursorTrail.canvasScale, y: p.y * CursorTrail.canvasScale)
+                if let doodle = doodles.step(real: p, shown: shown, now: now), now - lastReaction > 6 { react(doodle, at: now) }
+            } else {
+                doodles.reset()
+            }
+        }
         guard stage == .measure, !previewing else { return }
         tester.step()
         progress = tester.progress
@@ -183,6 +228,18 @@ final class SetupModel: ObservableObject {
                          : slow && (up || now - (slowSince ?? now) > 3) ? .slow : nil
         if want != coach { coach = want }
         if tester.phase == .finished { finishMeasuring() }
+    }
+
+    /// A heart, a star or the other one, answered for a few seconds.
+    private func react(_ doodle: Doodle, at now: Double) {
+        lastReaction = now
+        let reaction = Reaction(doodle: doodle, at: now)
+        withAnimation(.smooth) { self.reaction = reaction }
+        NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.reactionSeconds) { [weak self] in
+            guard let self, self.reaction == reaction else { return }
+            withAnimation(.smooth) { self.reaction = nil }
+        }
     }
 
     /// Stops a test half way: the screen goes back to its rate and the app to the start.
@@ -343,6 +400,9 @@ final class SetupModel: ObservableObject {
         case "measure": progress = 0.38; hint = .moving; testingHz = 144; testNumber = 2; testCount = 4; stage = .measure
         case "recheck": progress = 0.86; hint = .moving; testingHz = 144; recheck = [120, 144]; stage = .measure
         case "coach": progress = 0.12; hint = .start; testingHz = 165; testNumber = 1; testCount = 4; coach = .still; stage = .measure
+        case "heart", "star", "rude":
+            reaction = Reaction(doodle: Doodle(rawValue: name) ?? .heart, at: CACurrentMediaTime() - 0.3)
+            stage = .welcome
         case "stopped":
             notice = tr("Проверка остановлена. Экран снова на \(hz(originalHz)).", "Test stopped. The display is back at \(hz(originalHz)).")
             stage = .welcome

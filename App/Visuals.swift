@@ -14,6 +14,9 @@ struct Dial: View {
     var live: [LiveFrame] = []
     var liveHz = 0.0
     var switching = false
+    /// A drawing on the start screen being answered: the heart beats in the middle, a star
+    /// twinkles in the comb, and the other one makes the dial blush and the cursor shake its head.
+    var reaction: SetupModel.Reaction?
     var diameter: CGFloat = 250
     @ObservedObject private var clock = FrameClock.shared
 
@@ -22,6 +25,9 @@ struct Dial: View {
         Canvas { ctx, size in draw(&ctx, size: size) }
             .frame(width: diameter, height: diameter)
     }
+
+    /// How far from the middle the little cursor may go, for a dial `diameter` wide.
+    static func cursorRadius(for diameter: CGFloat) -> CGFloat { (diameter / 2 - 2) * 0.62 - 14 }
 
     private func draw(_ ctx: inout GraphicsContext, size: CGSize) {
         let c = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -57,16 +63,38 @@ struct Dial: View {
         switch mode {
         case .idle:
             // An even comb, lit where the cursor has just gone round.
+            let now = clock.now
+            let age = reaction.map { now - $0.at } ?? 0
+            // In over a fifth of a second, out over the last 0.6.
+            let on = reaction == nil ? 0 : max(0, min(1, age / 0.2, (SetupModel.reactionSeconds - age) / 0.6))
+            let phase = age.truncatingRemainder(dividingBy: 1)
+            let beat = exp(-pow((phase - 0.1) / 0.06, 2)) + 0.6 * exp(-pow((phase - 0.32) / 0.06, 2))
             for i in 0..<CursorTrail.slots {
                 let a = top + 2 * .pi * Double(i) / Double(CursorTrail.slots)
-                ctx.stroke(line(a, inner, inner + unit), with: .color(Theme.ink.opacity(0.14 + 0.72 * cursor.glow[i])), style: thin)
+                var alpha = 0.14 + 0.72 * cursor.glow[i]
+                var color = Theme.ink
+                switch reaction?.doodle {
+                case .heart: alpha = max(alpha, on * (0.25 + 0.5 * beat))
+                case .star: alpha = max(alpha, on * (0.5 + 0.5 * sin(now * 7 + Double(i) * 1.7) * sin(now * 3.3 + Double(i) * 0.9)))
+                case .rude:
+                    color = Theme.signal
+                    alpha = max(alpha, on * 0.7)
+                default: break
+                }
+                ctx.stroke(line(a, inner, inner + unit), with: .color(color.opacity(alpha)), style: thin)
             }
-            ctx.stroke(line(cursor.angle, inner - 8, rim - 9), with: .color(Theme.ink), style: hand)
-            drawCursor(&ctx, center: c, radius: inner - 14, dim: 1)
+            ctx.stroke(line(cursor.canvasAngle, inner - 8, rim - 9), with: .color(Theme.ink), style: hand)
+            if reaction?.doodle == .heart {
+                drawHeart(&ctx, center: c, size: (inner - 26) * (1 + 0.1 * beat), alpha: on)
+            } else {
+                // No, no: the cursor shakes its head at the other one.
+                let shake = reaction?.doodle == .rude ? CGFloat(7 * sin(age * 38) * exp(-age * 1.6) * on) : 0
+                drawCursor(&ctx, center: CGPoint(x: c.x + shake, y: c.y), radius: Self.cursorRadius(for: size.width), dim: 1, onCanvas: true)
+            }
 
         case .measure:
             let dim = switching ? 0.3 : 1
-            drawCursor(&ctx, center: c, radius: inner - 14, dim: dim)
+            drawCursor(&ctx, center: c, radius: Self.cursorRadius(for: size.width), dim: dim, onCanvas: false)
             // The last second of frames, oldest first so the newest lie on top.
             let shown = min(live.count, Int(max(liveHz, 30)))
             for age in stride(from: shown - 1, through: 0, by: -1) {
@@ -108,19 +136,32 @@ struct Dial: View {
         }
     }
 
+    /// A heart in the one color, as wide as `size`.
+    private func drawHeart(_ ctx: inout GraphicsContext, center c: CGPoint, size: CGFloat, alpha: Double) {
+        let points = Doodles.heart()
+        let xs = points.map(\.x), ys = points.map(\.y)
+        let span = max(xs.max()! - xs.min()!, ys.max()! - ys.min()!)
+        let cy = (ys.max()! + ys.min()!) / 2
+        var path = Path()
+        for (i, p) in points.enumerated() {
+            let q = CGPoint(x: c.x + p.x / span * size, y: c.y + (p.y - cy) / span * size)
+            if i == 0 { path.move(to: q) } else { path.addLine(to: q) }
+        }
+        path.closeSubpath()
+        ctx.fill(path, with: .color(Theme.signal.opacity(0.18 * alpha)))
+        ctx.stroke(path, with: .color(Theme.signal.opacity(alpha)), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+    }
+
     /// The real cursor, small, in the middle: it moves as the hand moves the mouse, its last
-    /// frames trailing behind, scaled so the hand's usual reach fills the middle.
-    private func drawCursor(_ ctx: inout GraphicsContext, center c: CGPoint, radius: CGFloat, dim: Double) {
+    /// frames trailing behind. On the start screen's canvas the trail is two seconds long, so a
+    /// drawing shows; in the test, on the orbit, a quarter of a second.
+    private func drawCursor(_ ctx: inout GraphicsContext, center c: CGPoint, radius: CGFloat, dim: Double, onCanvas: Bool) {
         let trail = CursorTrail.shared
         guard trail.points.count > 1 else { return }
-        let scale = CGFloat(min(0.3, Double(radius) / trail.reach))
-        func place(_ p: CGPoint) -> CGPoint {
-            var dx = (p.x - trail.center.x) * scale, dy = (p.y - trail.center.y) * scale
-            let d = hypot(dx, dy)
-            if d > radius { dx *= radius / d; dy *= radius / d }
-            return CGPoint(x: c.x + dx, y: c.y + dy)
+        let path = trail.points.suffix(onCanvas ? 240 : 36).map { p -> CGPoint in
+            let q = onCanvas ? trail.canvas(p) : trail.place(p, radius: radius)
+            return CGPoint(x: c.x + q.x, y: c.y + q.y)
         }
-        let path = trail.points.map(place)
         for i in 1..<path.count {
             var segment = Path()
             segment.move(to: path[i - 1])
