@@ -6,7 +6,6 @@
 
 <p align="center">
   <a href="https://github.com/ElowriT/pointersync/releases/latest/download/PointerSync.dmg"><img alt="Download for macOS" src="https://img.shields.io/badge/Download-for_macOS-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
-  <!-- The Gumroad download button goes here once its page exists. -->
 </p>
 
 <p align="center"><a href="https://ko-fi.com/elo7151"><img alt="Support me on Ko-fi" src="https://ko-fi.com/img/githubbutton_sm.svg"></a></p>
@@ -38,8 +37,22 @@ That's all. The refresh rate stays in macOS's settings, and you never need to op
 
 ## Install
 
-1. Download **PointerSync.dmg** and drag PointerSync into Applications.
-2. Open it. If macOS says it can't verify the app, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+1. Download [PointerSync.dmg](https://github.com/ElowriT/pointersync/releases/latest/download/PointerSync.dmg), open it and drag PointerSync into Applications.
+2. Open PointerSync. The first time, macOS stops it: PointerSync isn't notarized by Apple, which takes a paid developer account. Click **Done**.
+3. Open **System Settings → Privacy & Security** and scroll down to **Security**. Next to the line saying PointerSync was blocked, click **Open Anyway**, confirm with your password or Touch ID, and click **Open Anyway** once more. The button shows up for about an hour after you tried to open the app.
+
+You only do this once; after that PointerSync opens like any other app. All its code is here, so you can also [build it yourself](#build-it-yourself).
+
+<details>
+<summary>Or with one command in Terminal</summary>
+
+```bash
+xattr -dr com.apple.quarantine /Applications/PointerSync.app
+```
+
+It removes the "downloaded from the internet" mark from the app, so macOS doesn't stop it.
+
+</details>
 
 ## Build it yourself
 

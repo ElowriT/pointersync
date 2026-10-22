@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Makes a release of PointerSync for other Macs in dist.nosync/: PointerSync.dmg and
-# PointerSync.zip (the names the README links to), versioned copies of both, and their
-# SHA-256. Nothing is uploaded anywhere.
+# PointerSync.zip (the names the README links to), versioned copies of both, their
+# SHA-256, and release-notes.md, the text for the release page. Nothing is uploaded.
 #
 # To open without a warning on other Macs, a release needs a "Developer ID Application"
 # certificate (Apple Developer Program) and a notarytool keychain profile, both named in
@@ -90,6 +90,26 @@ fi
 cp "$dist/PointerSync.dmg" "$dist/PointerSync-$version.dmg"
 cp "$dist/PointerSync.zip" "$dist/PointerSync-$version.zip"
 (cd "$dist" && shasum -a 256 "PointerSync-$version.dmg" "PointerSync-$version.zip" > SHA256SUMS.txt)
+
+# The text for the release page: how to install, in both languages, and the sums. Without
+# notarization, how to get past macOS's stop on the first launch.
+{
+    echo "Download **PointerSync.dmg**, open it and drag PointerSync into Applications."
+    echo "Скачай **PointerSync.dmg**, открой его и перетащи PointerSync в «Программы»."
+    if (( ! notarize )); then
+        cat <<'NOTES'
+
+**First launch.** PointerSync isn't notarized by Apple, so the first time macOS stops it. Click **Done**, open **System Settings → Privacy & Security**, scroll down to **Security** and click **Open Anyway** next to PointerSync; confirm, and click **Open Anyway** once more. That's needed only once. Or in Terminal: `xattr -dr com.apple.quarantine /Applications/PointerSync.app`
+
+**Первый запуск.** PointerSync не заверен Apple, поэтому в первый раз macOS его остановит. Нажми **«Готово»**, открой **Системные настройки → Конфиденциальность и безопасность**, пролистай до раздела **«Безопасность»** и нажми **«Всё равно открыть»** рядом с PointerSync; подтверди и ещё раз нажми **«Всё равно открыть»**. Это нужно один раз. Или в Терминале: `xattr -dr com.apple.quarantine /Applications/PointerSync.app`
+NOTES
+    fi
+    echo
+    echo "SHA-256:"
+    echo '```'
+    cat "$dist/SHA256SUMS.txt"
+    echo '```'
+} > "$dist/release-notes.md"
 
 echo
 echo "Made in $dist:"

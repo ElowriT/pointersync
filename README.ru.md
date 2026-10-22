@@ -6,7 +6,6 @@
 
 <p align="center">
   <a href="https://github.com/ElowriT/pointersync/releases/latest/download/PointerSync.dmg"><img alt="Скачать для macOS" src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C-%D0%B4%D0%BB%D1%8F_macOS-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
-  <!-- Сюда встанет кнопка скачивания через Gumroad, когда будет страница. -->
 </p>
 
 <p align="center"><a href="https://ko-fi.com/elo7151"><img alt="Поддержать на Ko-fi" src="https://ko-fi.com/img/githubbutton_sm.svg"></a></p>
@@ -38,8 +37,22 @@
 
 ## Установка
 
-1. Скачай **PointerSync.dmg** и перетащи PointerSync в «Программы».
-2. Открой. Если macOS скажет, что не может проверить приложение, открой **Системные настройки → Конфиденциальность и безопасность**, пролистай вниз и нажми **«Всё равно открыть»**.
+1. Скачай [PointerSync.dmg](https://github.com/ElowriT/pointersync/releases/latest/download/PointerSync.dmg), открой его и перетащи PointerSync в «Программы».
+2. Запусти PointerSync. В первый раз macOS его остановит: приложение не заверено Apple, для этого нужен платный аккаунт разработчика. Нажми **«Готово»**.
+3. Открой **Системные настройки → Конфиденциальность и безопасность** и пролистай вниз до раздела **«Безопасность»**. Рядом со строкой о том, что PointerSync заблокирован, нажми **«Всё равно открыть»**, подтверди паролем или Touch ID и ещё раз нажми **«Всё равно открыть»**. Кнопка видна примерно час после попытки запуска.
+
+Это нужно сделать один раз, дальше PointerSync открывается как обычное приложение. Весь его код лежит здесь, так что его можно и [собрать самому](#собрать-самому).
+
+<details>
+<summary>Или одной командой в Терминале</summary>
+
+```bash
+xattr -dr com.apple.quarantine /Applications/PointerSync.app
+```
+
+Команда снимает с приложения пометку «скачано из интернета», и macOS его больше не останавливает.
+
+</details>
 
 ## Собрать самому
 
