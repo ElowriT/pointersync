@@ -11,8 +11,8 @@ set -euo pipefail
 cd "${0:A:h}"
 [[ -f local.env ]] && source ./local.env
 
-VERSION=1.4
-BUILD=6
+VERSION=1.5
+BUILD=7
 APP=${POINTERSYNC_BUILD_DIR:-$HOME/Library/Developer/PointerSync}/PointerSync.app
 IDENTITY=${POINTERSYNC_SIGN_IDENTITY:--}
 
