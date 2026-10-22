@@ -89,7 +89,8 @@ fi
 
 cp "$dist/PointerSync.dmg" "$dist/PointerSync-$version.dmg"
 cp "$dist/PointerSync.zip" "$dist/PointerSync-$version.zip"
-(cd "$dist" && shasum -a 256 "PointerSync-$version.dmg" "PointerSync-$version.zip" > SHA256SUMS.txt)
+# Sums of the files the release page serves (the versioned copies are the same bytes).
+(cd "$dist" && shasum -a 256 PointerSync.dmg PointerSync.zip > SHA256SUMS.txt)
 
 # The text for the release page: how to install, in both languages, and the sums. Without
 # notarization, how to get past macOS's stop on the first launch.
