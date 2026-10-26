@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/ElowriT/pointersync/releases/latest/download/PointerSync.dmg"><img alt="Download for macOS" src="https://img.shields.io/badge/Download-for_macOS-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <a href="https://elo7151.gumroad.com/l/pointersync"><img alt="Get it on Gumroad" src="https://img.shields.io/badge/Get_it_on-Gumroad-FF90E8?style=for-the-badge&logo=gumroad&logoColor=white"></a>
 </p>
 
 <p align="center"><a href="https://ko-fi.com/elo7151"><img alt="Support me on Ko-fi" src="https://ko-fi.com/img/githubbutton_sm.svg"></a></p>
